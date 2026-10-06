@@ -853,19 +853,29 @@ function updateMapMarker(location) {
 
             previousCorridor = getCorridorFromShelf(number);
 
-            /*
-            通常の本棚写真を表示
-            */
+        /*
+本棚の写真を表示
+*/
 
-            changePhoto(data.image);
+if (data.image) {
 
-            document.getElementById("location-name").textContent =
-                data.name;
+    // 通常の写真がある本棚
+    changePhoto(data.image);
 
-            createButtons();
-            updateMapMarker("shelf" + number);
+} else {
 
-        }
+    // 上・下の写真しかない本棚
+    changePhoto("blank.jpg");
+
+}
+
+document.getElementById("location-name").textContent =
+    data.image
+        ? data.name
+        : data.name + "　うえかしたをえらんでください";
+
+createButtons();
+updateMapMarker("shelf" + number);}
 
 
 
