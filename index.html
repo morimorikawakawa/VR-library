@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>VR図書館</title>
+
+    <!-- 360度写真を見るためのPannellum -->
+    <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"
+    >
+
+    <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+
+
+    <style>
+
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            background: #222;
+        }
+
+
+        /* 360度写真 */
+
+        #panorama {
+            width: 100vw;
+            height: 100vh;
+        }
+
+
+        /* 現在地 */
+
+        #location-name {
+
+            position: absolute;
+
+            top: 20px;
+            left: 20px;
+
+            z-index: 10;
+
+            background: rgba(0, 0, 0, 0.65);
+
+            color: white;
+
+            padding: 12px 20px;
+
+            border-radius: 10px;
+
+            font-size: 24px;
+
+            font-weight: bold;
+        }
+
+
+        /* ボタンを置く場所 */
+
+        .buttons {
+
+            position: absolute;
+
+            bottom: 30px;
+
+            left: 50%;
+
+            transform: translateX(-50%);
+
+            z-index: 10;
+
+            display: flex;
+
+            gap: 15px;
+
+            flex-wrap: wrap;
+
+            justify-content: center;
+
+            max-width: 90%;
+        }
+
+
+        /* ボタン */
+
+        .move-button {
+
+            border: none;
+
+            border-radius: 12px;
+
+            padding: 14px 24px;
+
+            background: white;
+
+            color: #333;
+
+            font-size: 18px;
+
+            font-weight: bold;
+
+            cursor: pointer;
+
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+        }
+
+
+
+      .move-button:hover {
+
+            background: #eeeeee;
+
+        }
+
+
+        /* =====================================
+           館内地図
+           ===================================== */
+
+        #map-container {
+
+            position: absolute;
+
+            top: 20px;
+
+            right: 20px;
+
+            width: 320px;
+
+            z-index: 20;
+
+            background: white;
+
+            padding: 10px;
+
+            border-radius: 10px;
+
+            box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+
+        }
+
+
+        #map-image {
+
+            width: 100%;
+
+            display: block;
+
+            border-radius: 6px;
+
+        }
+
+
+        /* 現在地を示す赤い丸 */
+
+#map-marker {
+
+    position: absolute;
+
+    width: 18px;
+
+    height: 18px;
+
+    background: red;
+
+    border-radius: 50%;
+
+    border: 3px solid white;
+
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+
+    transform: translate(-50%, -50%);
+
+    z-index: 30;
+
+}
+
+
+
+
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+    <!-- 現在地 -->
+
+    <div id="location-name">
+        現在地：A
+    </div>
+
+
+    <!-- 360度写真 -->
+
+    <div id="panorama"></div>
+
+
+
+    <!-- 館内地図 -->
+
+<div id="map-container">
+
+    <img src="map.png" id="map-image">
+
+    <!-- 現在地の赤い丸 -->
+    <div id="map-marker"></div>
+
+</div>
+
+
+
+    <!-- 移動ボタン -->
+
+    <div class="buttons" id="buttons"></div>
+
+
+
+    <script>
+
+
+        /*
+        ==================================================
+        通路A～P
+        ==================================================
+        */
+
+        const corridors = {
+
+            A: {
+                name: "A",
+                image: "A.jpg"
+            },
+
+            B: {
+                name: "B",
+                image: "B.jpg"
+            },
+
+            C: {
+                name: "C",
+                image: "C.jpg"
+            },
+
+            D: {
+                name: "D",
+                image: "D.jpg"
+            },
+
+            E: {
+                name: "E",
+                image: "E.jpg"
+            },
+
+            F: {
+                name: "F",
+                image: "F.jpg"
+            },
+
+            G: {
+                name: "G",
+                image: "G.jpg"
+            },
+
+            H: {
+                name: "H",
+                image: "H.jpg"
+            },
+
+            I: {
+                name: "I",
+                image: "I.jpg"
+            },
+
+            J: {
+                name: "J",
+                image: "J.jpg"
+            },
+
+            K: {
+                name: "K",
+                image: "K.jpg"
+            },
+
+            L: {
+                name: "L",
+                image: "L.jpg"
+            },
+
+            M: {
+                name: "M",
+                image: "M.jpg"
+            },
+
+            N: {
+                name: "N",
+                image: "N.jpg"
+            },
+
+            O: {
+                name: "O",
+                image: "O.jpg"
+            },
+
+            P: {
+                name: "P",
+                image: "P.jpg"
+            }
+
+        };
+
+
+
+        /*
+        ==================================================
+        本棚1～45
+        ==================================================
+        */
+
+        const shelves = {
+
+            1: {
+                name: "本棚1",
+                high: "1 high.jpg",
+                low: "1 low.jpg"
+            },
+
+            2: {
+                name: "本棚2",
+                high: "2 high.jpg",
+                low: "2 low.jpg"
+            },
+
+            3: {
+                name: "本棚3",
+                high: "3 high.jpg",
+                low: "3 low.jpg"
+            },
+
+            4: {
+                name: "本棚4",
+                image: "4.jpg",
+            },
+
+
+            5: {
+                name: "本棚5",
+                image: "5.jpg"
+            },
+
+            6: {
+                name: "本棚6",
+                image: "6.jpg"
+            },
+
+            7: {
+                name: "本棚7",
+                image: "7.jpg"
+            },
+
+            8: {
+                name: "本棚8",
+                image: "8.jpg"
+            },
+
+            9: {
+                name: "本棚9",
+                image: "9.jpg"
+            },
+
+            10: {
+                name: "本棚10",
+                image: "10.jpg"
+            },
+
+            11: {
+                name: "本棚11",
+                image: "11.jpg"
+            },
+
+            12: {
+                name: "本棚12",
+                image: "12.jpg"
+            },
+
+            13: {
+                name: "本棚13",
+                image: "13.jpg"
+            },
+
+            14: {
+                name: "本棚14",
+                image: "14.jpg"
+            },
+
+            15: {
+                name: "本棚15",
+                image: "15.jpg"
+            },
+
+            16: {
+                name: "本棚16",
+                image: "16.jpg"
+            },
+
+            17: {
+                name: "本棚17",
+                image: "17.jpg"
+            },
+
+            18: {
+                name: "本棚18",
+                image: "18.jpg"
+            },
+
+            19: {
+                name: "本棚19",
+                image: "19.jpg"
+            },
+
+            20: {
+                name: "本棚20",
+                image: "20.jpg"
+            },
+
+            21: {
+                name: "本棚21",
+                image: "21.jpg"
+            },
+
+            22: {
+                name: "本棚22",
+                image: "22.jpg"
+            },
+
+            23: {
+                name: "本棚23",
+                image: "23.jpg"
+            },
+
+            24: {
+                name: "本棚24",
+                image: "24.jpg"
+            },
+
+            25: {
+                name: "本棚25",
+                image: "25.jpg"
+            },
+
+            26: {
+                name: "本棚26",
+                image: "26.jpg"
+            },
+
+            27: {
+                name: "本棚27",
+                image: "27.jpg"
+            },
+
+            28: {
+                name: "本棚28",
+                image: "28.jpg"
+            },
+
+            29: {
+                name: "本棚29",
+                image: "29.jpg"
+            },
+
+            30: {
+                name: "本棚30",
+                image: "30.jpg"
+            },
+
+            31: {
+                name: "本棚31",
+                image: "31.jpg"
+            },
+
+            32: {
+                name: "本棚32",
+                image: "32.jpg"
+            },
+
+            33: {
+                name: "本棚33",
+                image: "33.jpg"
+            },
+
+            34: {
+                name: "本棚34",
+                image: "34.jpg"
+            },
+
+            35: {
+                name: "本棚35",
+                image: "35.jpg"
+            },
+
+            36: {
+                name: "本棚36",
+                image: "36.jpg"
+            },
+
+            37: {
+                name: "本棚37",
+                image: "37.jpg"
+            },
+
+            38: {
+                name: "本棚38",
+                image: "38.jpg"
+            },
+
+            39: {
+                name: "本棚39",
+                image: "39.jpg"
+            },
+
+
+            40: {
+                name: "本棚40",
+                high: "40 high.jpg",
+                low: "40 low.jpg"
+            },
+
+            41: {
+                name: "本棚41",
+                high: "41 high.jpg",
+                low: "41 low.jpg"
+            },
+
+            42: {
+                name: "本棚42",
+                high: "42 high.jpg",
+                low: "42 low.jpg"
+            },
+
+            43: {
+                name: "本棚43",
+                high: "43 high.jpg",
+                low: "43 low.jpg"
+            },
+
+            44: {
+                name: "本棚44",
+                high: "44 high.jpg",
+                low: "44 low.jpg"
+            },
+
+            45: {
+                name: "本棚45",
+                image: "45.jpg"
+            }
+
+        };
+
+
+
+        /*
+        ==================================================
+        ★ ここで「どの通路にどの本棚があるか」を設定します
+        ==================================================
+
+        今は仮に、
+        A → 本棚1～3
+        B → 本棚4～6
+        C → 本棚7～9
+
+        というように設定しています。
+
+        実際の図書館の配置が分かったら、
+        ここだけ変更すればOKです。
+        ==================================================
+        */
+
+        const corridorShelves = {
+
+            A: [ ],
+
+            B: [ ],
+
+            C: ["1","2","3"],
+
+            D: ["4","5"],
+
+            E: ["6","7"],
+
+            F: ["8","9","10"],
+
+            G: ["11","12","13"],
+
+            H: [],
+
+            I: ["14","15","16"],
+
+            J: ["17","18","19","20",],
+
+            K: ["21","22","23","45"],
+
+            L: ["24","25","26"],
+
+            M: ["27","28"],
+
+            N: ["29","30"],
+
+            O: ["31","32","33","36","37","38","39"],
+
+            P: ["34","35","40","41","42","43","44"]
+
+        };
+
+
+
+
+
+
+
+
+        /*
+        ==================================================
+        現在いる場所
+        ==================================================
+        */
+
+        let currentType = "corridor";
+
+        let currentLocation = "A";
+
+        let previousCorridor = "A";
+
+
+        /*
+==================================================
+館内地図の赤い丸の位置
+==================================================
+*/
+
+const mapPositions = {
+
+    A: { x: 86.5, y: 93 },
+    B: { x: 86.5, y: 93 },
+    C: { x: 86.5, y: 72 },
+    D: { x: 86.5, y: 31 },
+
+    E: { x: 86.5, y:19},
+    F: { x: 73, y: 19 },
+    G: { x: 58, y: 19 },
+    H: { x: 27, y: 19 },
+
+    I: { x: 16.5, y: 18 },
+    J: { x: 15, y: 81.5 },
+    K: { x: 26.5, y: 81.5 },
+    L: { x: 26.5, y: 35 },
+
+    M: { x: 42, y: 35 },
+    N: { x: 43.5, y: 81.5 },
+    O: { x: 58, y: 81.5 },
+    P: { x: 70, y: 81.5 },
+
+
+  // =========================
+    // 本棚 1～45
+    // =========================
+
+    shelf1:  { x: 82.5, y: 60 },
+    shelf2:  { x: 82.5, y: 48 },
+    shelf3:  { x: 82.5, y: 36 },
+
+    shelf4:  { x: 83, y: 13 },
+    shelf5:  { x: 77, y: 13 },
+
+    shelf6:  { x: 71, y: 13 },
+    shelf7:  { x: 65, y: 13 },
+
+    shelf8:  { x: 59, y: 13 },
+    shelf9:  { x: 53, y: 13 },
+    shelf10: { x: 54, y: 24 },
+
+    shelf11: { x: 40, y: 24 },
+    shelf12: { x: 35.5, y: 24 },
+    shelf13: { x: 31.5, y: 24 },
+
+    shelf14: { x: 16, y: 31 },
+    shelf15: { x: 16, y: 43.5 },
+    shelf16: { x: 16, y: 55 },
+
+    shelf17: { x: 16, y: 66 },
+    shelf18: { x: 19, y: 70 },
+    shelf19: { x: 25, y: 68 },
+    shelf20: { x: 26, y: 63 },
+
+    shelf21: { x: 25, y: 55 },
+    shelf22: { x: 25, y: 43.5 },
+    shelf23: { x: 25, y: 31 },
+
+    shelf24: { x: 31.5, y: 31 },
+    shelf25: { x: 35.5, y: 31 },
+    shelf26: { x: 40, y: 31 },
+
+    shelf27: { x: 46.5, y: 43 },
+
+    shelf28: { x: 46.5, y: 57 },
+    shelf29: { x: 51, y: 85 },
+
+    shelf30: { x: 56, y: 85 },
+
+    shelf31: { x: 61, y: 85 },
+    shelf32: { x: 65, y: 85 },
+    shelf33: { x: 69, y: 85 },
+
+    shelf34: { x: 74, y: 85 },
+    shelf35: { x: 79, y: 85 },
+
+    shelf36: { x: 55, y: 57 },
+    shelf37: { x: 55, y: 43 },
+    shelf38: { x: 61, y: 57 },
+    shelf39: { x: 61, y: 43 },
+
+    shelf40: { x: 70, y: 57 },
+    shelf41: { x: 70, y: 43 },
+    shelf42: { x: 75, y: 36 },
+
+    shelf43: { x: 75, y: 48 },
+    shelf44: { x: 75, y: 60 },
+    shelf45: { x: 30, y: 60 }
+
+};
+
+
+  /*==================================================
+                         赤い丸を移動
+    ==================================================*/
+
+function updateMapMarker(location) {
+
+    const marker = document.getElementById("map-marker");
+
+    const position = mapPositions[location];
+
+    if (!position) {
+
+        return;
+
+    }
+
+    marker.style.left = position.x + "%";
+
+    marker.style.top = position.y + "%";
+
+}
+
+
+        /*
+        ==================================================
+        360度写真を表示
+        ==================================================
+        */
+
+        let viewer = pannellum.viewer("panorama", {
+
+            type: "equirectangular",
+
+            panorama: corridors.A.image,
+
+            autoLoad: true,
+
+            showControls: true,
+
+            compass: false
+
+        });
+
+
+
+        /*
+        ==================================================
+        写真を変更する
+        ==================================================
+        */
+
+        function changePhoto(image) {
+
+            viewer.destroy();
+
+            viewer = pannellum.viewer("panorama", {
+
+                type: "equirectangular",
+
+                panorama: image,
+
+                autoLoad: true,
+
+                showControls: true,
+
+                compass: false
+
+            });
+
+        }
+
+
+
+        /*
+        ==================================================
+        通路へ移動
+        ==================================================
+        */
+
+        function moveToCorridor(location) {
+
+            currentType = "corridor";
+
+            currentLocation = location;
+
+            const data = corridors[location];
+
+            changePhoto(data.image);
+
+            document.getElementById("location-name").textContent =
+                "現在地：" + data.name;
+
+            createButtons();
+            updateMapMarker(location);
+
+        }
+
+
+
+        /*
+        ==================================================
+        本棚へ移動
+        ==================================================
+        */
+
+        function moveToShelf(number) {
+
+            currentType = "shelf";
+
+            currentLocation = number;
+
+            const data = shelves[number];
+
+            /*
+            本棚へ入る前の通路を記録
+            */
+
+            previousCorridor = getCorridorFromShelf(number);
+
+            /*
+            通常の本棚写真を表示
+            */
+
+            changePhoto(data.image);
+
+            document.getElementById("location-name").textContent =
+                data.name;
+
+            createButtons();
+            updateMapMarker("shelf" + number);
+
+        }
+
+
+
+        /*
+        ==================================================
+        本棚から通路へ戻る
+        ==================================================
+        */
+
+        function backToCorridor() {
+
+            moveToCorridor(previousCorridor);
+
+        }
+
+
+
+        /*
+        ==================================================
+        本棚がどの通路につながっているか調べる
+        ==================================================
+        */
+
+        function getCorridorFromShelf(number) {
+
+            for (const corridor in corridorShelves) {
+
+                if (corridorShelves[corridor].includes(number)) {
+
+                    return corridor;
+
+                }
+
+            }
+
+            return "A";
+
+        }
+
+
+
+        /*
+        ==================================================
+        上の写真を見る
+        ==================================================
+        */
+
+        function showHigh() {
+
+            const data = shelves[currentLocation];
+
+            if (data.high) {
+
+                changePhoto(data.high);
+
+                document.getElementById("location-name").textContent =
+                    data.name + "（上）";
+
+            }
+
+        }
+
+
+
+        /*
+        ==================================================
+        下の写真を見る
+        ==================================================
+        */
+
+        function showLow() {
+
+            const data = shelves[currentLocation];
+
+            if (data.low) {
+
+                changePhoto(data.low);
+
+                document.getElementById("location-name").textContent =
+                    data.name + "（下）";
+
+            }
+
+        }
+
+
+
+        /*
+        ==================================================
+        ボタンを作る
+        ==================================================
+        */
+
+        function createButtons() {
+
+            const buttons =
+                document.getElementById("buttons");
+
+            buttons.innerHTML = "";
+
+
+
+            /*
+            ==============================================
+            通路にいる場合
+            ==============================================
+            */
+
+            if (currentType === "corridor") {
+
+
+                /*
+                -------------------------
+                すすむ
+                -------------------------
+                */
+
+                const currentCode =
+                    currentLocation.charCodeAt(0);
+
+                const nextCode =
+                    currentCode + 1;
+
+
+                if (nextCode <= "P".charCodeAt(0)) {
+
+                    const nextLocation =
+                        String.fromCharCode(nextCode);
+
+
+                    const button =
+                        document.createElement("button");
+
+                    button.className = "move-button";
+
+                    button.textContent = "すすむ";
+
+                    button.onclick = function() {
+
+                        moveToCorridor(nextLocation);
+
+                    };
+
+                    buttons.appendChild(button);
+
+                }
+
+
+            // PにいるときはCへ進む
+            if (currentLocation === "P") {
+
+            const button = document.createElement("button");
+
+            button.className = "move-button";
+
+            button.textContent = "すすむ";
+
+            button.onclick = function() {
+
+                moveToCorridor("C");
+
+            };
+
+            buttons.appendChild(button);
+            }
+
+                /*
+                -------------------------
+                もどる
+                -------------------------
+                */
+
+                if (currentCode > "A".charCodeAt(0)) {
+
+                    const previousLocation =
+                        String.fromCharCode(currentCode - 1);
+
+
+                    const button =
+                        document.createElement("button");
+
+                    button.className = "move-button";
+
+                    button.textContent = "もどる";
+
+                    button.onclick = function() {
+
+                        moveToCorridor(previousLocation);
+
+                    };
+
+                    buttons.appendChild(button);
+
+                }
+
+
+
+                /*
+                -------------------------
+                本棚を見る
+                -------------------------
+                */
+
+                const shelfList =
+                    corridorShelves[currentLocation];
+
+
+                shelfList.forEach(function(number) {
+
+                    const button =
+                        document.createElement("button");
+
+                    button.className = "move-button";
+
+                    button.textContent =
+                        "ほんだな" + number;
+
+                    button.onclick = function() {
+
+                        moveToShelf(number);
+                    };
+
+                    buttons.appendChild(button);
+
+                });
+
+            }
+
+
+
+            /*
+            ==============================================
+            本棚にいる場合
+            ==============================================
+            */
+
+            if (currentType === "shelf") {
+
+                const data =
+                    shelves[currentLocation];
+
+
+
+                /*
+                -------------------------
+                上を見る
+                -------------------------
+                */
+
+                if (data.high) {
+
+                    const button =
+                        document.createElement("button");
+
+                    button.className = "move-button";
+
+                    button.textContent = "うえをみる";
+
+                    button.onclick = function() {
+
+                        showHigh();
+
+                    };
+
+                    buttons.appendChild(button);
+
+                }
+
+
+
+                /*
+                -------------------------
+                下を見る
+                -------------------------
+                */
+
+                if (data.low) {
+
+                    const button =
+                        document.createElement("button");
+
+                    button.className = "move-button";
+
+                    button.textContent = "したをみる";
+
+                    button.onclick = function() {
+
+                        showLow();
+
+                    };
+
+                    buttons.appendChild(button);
+
+                }
+
+
+
+                /*
+                -------------------------
+                通路へ戻る
+                -------------------------
+                */
+
+                const backButton =
+                    document.createElement("button");
+
+                backButton.className = "move-button";
+
+                backButton.textContent = "つうろにもどる";
+
+                backButton.onclick = function() {
+
+                    backToCorridor();
+
+                };
+
+                buttons.appendChild(backButton);
+
+            }
+
+        }
+
+
+
+        /*
+        ==================================================
+        最初のボタンを表示
+        ==================================================
+        */
+
+        createButtons();
+        updateMapMarker(currentLocation);
+
+    </script>
+
+</body>
+</html>
