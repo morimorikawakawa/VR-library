@@ -57,6 +57,33 @@
         }
 
 
+
+        /* 来館者数 */
+
+#visitor-number {
+
+    position: absolute;
+
+    top: 85px;
+    left: 20px;
+
+    z-index: 10;
+
+    background: rgba(0, 0, 0, 0.65);
+
+    color: white;
+
+    padding: 10px 16px;
+
+    border-radius: 10px;
+
+    font-size: 18px;
+
+    font-weight: bold;
+}
+
+
+
         /* ボタンを置く場所 */
 
         .buttons {
@@ -194,6 +221,13 @@
     <div id="location-name">
         現在地：A
     </div>
+
+
+    <!-- 来館者数 -->
+
+<div id="visitor-number">
+    来館者数を読み込んでいます…
+</div>
 
 
     <!-- 360度写真 -->
@@ -826,6 +860,12 @@ function updateMapMarker(location) {
             document.getElementById("location-name").textContent =
                 "現在地：" + data.name;
 
+
+            if (location !== "A") {
+            document.getElementById("visitor-number").style.display = "none";
+            }
+                
+
             createButtons();
             updateMapMarker(location);
 
@@ -1208,6 +1248,29 @@ updateMapMarker("shelf" + number);}
 
         createButtons();
         updateMapMarker(currentLocation);
+
+// ==========================================
+// 来館者数をGoogleスプレッドシートから取得
+// ==========================================
+
+fetch("https://script.google.com/macros/s/AKfycbwznzWMFtYivUz9nIUvq0xN-FGFH2A3NxHIPMcbD_rzMs3bJnjdmASKvnHRdDDkkeDe/exec")
+    .then(response => response.text())
+    .then(count => {
+
+        document.getElementById("visitor-number").textContent =
+            "あなたは " + count + " 番目の来館者です";
+
+    })
+    .catch(error => {
+
+        document.getElementById("visitor-number").textContent =
+            "来館者数を取得できませんでした";
+
+        console.error(error);
+
+    });
+
+</script>
 
     </script>
 
