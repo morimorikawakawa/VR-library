@@ -32,6 +32,64 @@
         }
 
 
+
+
+
+
+
+
+
+
+
+
+/* スタート画面 */
+#start-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    background: #222;
+}
+
+/* スタート画面の画像 */
+#start-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+/* 次へボタン */
+#start-button {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 15px 40px;
+    font-size: 22px;
+    font-weight: bold;
+    color: white;
+    background: #79552D;
+    border: 2px solid white;
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         /* 現在地 */
 
         #location-name {
@@ -233,6 +291,48 @@
     <!-- 360度写真 -->
 
     <div id="panorama"></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- スタート画面 -->
+<div id="start-screen">
+
+    <img
+        src="start.jpg"
+        id="start-image"
+        alt="ようこそVR図書館へ"
+    >
+
+    <button
+        id="start-button"
+        onclick="startLibrary()"
+    >
+        次へ ▶
+    </button>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -873,6 +973,34 @@ function updateMapMarker(location) {
 
 
 
+
+
+
+
+
+
+
+// スタート画面から図書館へ進む
+function startLibrary() {
+
+    // スタート画面を非表示にする
+    document.getElementById("start-screen").style.display = "none";
+
+    // 最初のスタート地点Aへ移動する
+    moveToCorridor("A");
+}
+
+
+
+
+
+
+
+
+
+
+
+
         /*
         ==================================================
         本棚へ移動
@@ -1269,8 +1397,6 @@ fetch("https://script.google.com/macros/s/AKfycbwznzWMFtYivUz9nIUvq0xN-FGFH2A3Nx
         console.error(error);
 
     });
-
-</script>
 
     </script>
 
