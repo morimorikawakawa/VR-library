@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VR図書館</title>
+    <!-- 360度写真を見るためのPannellum -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css">
+    <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            background: #222;
+            overflow: hidden; /* スクロールバー非表示 */
+        }
+        
+        /* 360度写真 */
+        #panorama {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* スタート画面 */
+        #start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            background: #222;
+        }
+        #start-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        #start-button {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 40px;
+            font-size: 22px;
+            font-weight: bold;
+            color: white;
+            background: #79552D;
+            border: 2px solid white;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            transition: transform 0.2s, background 0.2s;
+        }
+        #start-button:hover {
+            background: #5d3f20;
+            transform: translateX(-50%) scale(1.05);
+        }
+
+        /* 左上UIコンテナ */
+        #top-left-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        /* UI共通: ヘッダー情報の背景 */
+        .info-panel {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 10px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        }
+
+        /* 現在地 */
+        #location-name {
+            padding: 12px 20px;
+            font-size: 24px;
+        }
+
+        /* 来館者数 */
+        #visitor-number {
+            padding: 10px 16px;
+            font-size: 16px;
+        }
+
+        /* 借りたい本メモを開くボタン */
+        #memo-open-btn {
+            background: #d97706;
+            color: white;
+            border: 2px solid white;
+            border-radius: 10px;
+            padding: 11px 18px;
+            font-size: 17px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+            transition: transform 0.15s, background 0.15s;
+        }
+        #memo-open-btn:hover {
+            background: #b45309;
+            transform: translateY(-2px);
+        }
+
+        /* ボタンを置く場所（画面下部） */
+        .buttons {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 95%;
+            background: rgba(0,0,0,0.3);
+            padding: 10px 20px;
+            border-radius: 15px;
+        }
+
+        /* ボタン */
+        .move-button {
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            background: white;
+            color: #333;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            transition: transform 0.1s, background 0.1s;
+        }
+        .move-button:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+        }
+        /* 本棚切り替え・戻るボタンは色を変えて目立たせる */
+        .move-button.action-btn {
+            background: #ffe3b0;
+            color: #5a3d0f;
+        }
+        .move-button.action-btn:hover {
+            background: #ffcf7a;
+        }
+
+        /* =====================================
+           借りたい本メモ（モーダル）
+           ===================================== */
+        #memo-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.65);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        #memo-modal {
+            background: white;
+            width: 90%;
+            max-width: 480px;
+            max-height: 85vh;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+        #memo-modal h2 {
+            margin: 0 0 14px 0;
+            font-size: 22px;
+            color: #79552D;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .memo-form {
+            background: #fdf8f2;
+            border: 1px solid #eadbc8;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .memo-form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .memo-form-row label {
+            font-size: 13px;
+            font-weight: bold;
+            color: #555;
+        }
+        .memo-form-row input {
+            padding: 9px 12px;
+            font-size: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            outline: none;
+        }
+        .memo-form-row input:focus {
+            border-color: #d97706;
+        }
+        #memo-add-btn {
+            background: #d97706;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 4px;
+        }
+        #memo-add-btn:hover {
+            background: #b45309;
+        }
+        #memo-list-container {
+            flex: 1;
+            overflow-y: auto;
+            border-top: 1px solid #eee;
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+            margin-bottom: 14px;
+            min-height: 120px;
+        }
+        .memo-empty {
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            padding: 30px 10px;
+        }
+        .memo-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f9f9f9;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            gap: 10px;
+        }
+        .memo-item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            word-break: break-all;
+        }
+        .memo-item-loc {
+            display: inline-block;
+            background: #ffe3b0;
+            color: #5a3d0f;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 4px;
+            width: fit-content;
+        }
+        .memo-item-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #222;
+        }
+        .memo-delete-btn {
+            background: #fee2e2;
+            color: #b91c1c;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .memo-delete-btn:hover {
+            background: #fecaca;
+        }
+        .memo-footer {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .memo-footer button {
+            border: none;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        #memo-copy-btn {
+            background: #2c7a7b;
+            color: white;
+            flex: 1;
+        }
+        #memo-copy-btn:hover {
+            background: #235f5f;
+        }
+        #memo-clear-btn {
+            background: #eee;
+            color: #555;
+        }
+        #memo-clear-btn:hover {
+            background: #ddd;
+        }
+        #memo-close-btn {
+            background: #333;
+            color: white;
+            padding: 10px 20px;
+        }
+        #memo-close-btn:hover {
+            background: #111;
+        }
+
+        /* =====================================
+           館内地図
+           ===================================== */
+        #map-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 400px;
+            z-index: 20;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+            transition: width 0.3s;
+        }
+        #map-container.minimized {
+            width: 140px;
+        }
+        #map-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 12px 0 12px;
+        }
+        #map-header span {
+            font-weight: bold;
+            font-size: 15px;
+            color: #333;
+        }
+        #toggle-map-btn {
+            background: #eee;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        
+        #map-wrapper {
+            position: relative;
+            width: 100%;
+            padding: 10px; /* 元のコンテナと同じ余白を持たせる */
+            box-sizing: border-box;
+        }
+        #map-image {
+            width: 100%;
+            display: block;
+            border-radius: 6px;
+        }
+        #map-container.minimized #map-wrapper {
+            display: none;
+        }
+
+        /* 現在地を示す赤い丸 */
+        #map-marker {
+            position: absolute;
+            width: 18px; 
+            height: 18px;
+            background: #ff3b3b;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+            transform: translate(-50%, -50%);
+            z-index: 30;
+            transition: left 0.5s ease-out, top 0.5s ease-out;
+        }
+        
+        /* 地図上のクリック可能なピン */
+        .clickable-pin {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            background: transparent;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            z-index: 25;
+        }
+        .clickable-pin:hover::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 14px; height: 14px;
+            background: rgba(44, 122, 123, 0.6);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* ローディングインジケーター */
+        #loading {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 18px;
+            z-index: 40;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 左上UI（現在地・来館者数・借りたい本メモボタン） -->
+    <div id="top-left-ui">
+        <div id="location-name" class="info-panel">現在地：A</div>
+        <div id="visitor-number" class="info-panel">来館者数を読み込んでいます…</div>
+        <button id="memo-open-btn" onclick="openMemoModal()">📝 借りたい本メモ (<span id="memo-count">0</span>)</button>
+    </div>
+
+    <!-- 360度写真 -->
+    <div id="panorama"></div>
+    <div id="loading">画像を読み込み中...</div>
+
+    <!-- スタート画面 -->
+    <div id="start-screen">
+        <img src="start.jpg" id="start-image" alt="ようこそVR図書館へ">
+        <button id="start-button" onclick="startLibrary()">次へ ▶</button>
+    </div>
+
+    <!-- 館内地図 -->
+    <div id="map-container">
+        <div id="map-header">
+            <span>🗺 館内マップ</span>
+            <button id="toggle-map-btn" onclick="toggleMap()">とじる</button>
+        </div>
+        <div id="map-wrapper">
+            <img src="map.png" id="map-image" alt="館内地図">
+            <div id="map-marker"></div>
+        </div>
+    </div>
+
+    <!-- 移動ボタン -->
+    <div class="buttons" id="buttons"></div>
+
+    <!-- 借りたい本メモ モーダル -->
+    <div id="memo-modal-overlay" onclick="if(event.target === this) closeMemoModal()">
+        <div id="memo-modal">
+            <h2>📝 借りたい本メモ</h2>
+            
+            <div class="memo-form">
+                <div class="memo-form-row">
+                    <label for="memo-location-input">いま見ている場所（自動で入ります）</label>
+                    <input type="text" id="memo-location-input" placeholder="例：本棚6">
+                </div>
+                <div class="memo-form-row">
+                    <label for="memo-book-input">借りたい本の名前や特徴</label>
+                    <input type="text" id="memo-book-input" placeholder="例：下から2段目の赤い図鑑" onkeydown="if(event.key==='Enter') addMemoItem()">
+                </div>
+                <button id="memo-add-btn" onclick="addMemoItem()">＋ リストに追加する</button>
+            </div>
+
+            <div id="memo-list-container"></div>
+
+            <div class="memo-footer">
+                <button id="memo-copy-btn" onclick="copyMemoList()">📋 リストをコピー</button>
+                <button id="memo-clear-btn" onclick="clearMemoList()">すべて消す</button>
+                <button id="memo-close-btn" onclick="closeMemoModal()">とじる</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ==================================================
+           設定データ
+           ================================================== */
+        const corridors = {
+            A: { name: "A", image: "A.jpg", yaw: 0 },
+            B: { name: "B", image: "B.jpg", yaw: 0 },
+            C: { name: "C", image: "C.jpg", yaw: 0 },
+            D: { name: "D", image: "D.jpg", yaw: -90 },
+            E: { name: "E", image: "E.jpg", yaw: 90 },
+            F: { name: "F", image: "F.jpg", yaw: 90 },
+            G: { name: "G", image: "G.jpg", yaw: 90 },
+            H: { name: "H", image: "H.jpg", yaw: 90 },
+            I: { name: "I", image: "I.jpg", yaw: 180 },
+            J: { name: "J", image: "J.jpg", yaw: -90 },
+            K: { name: "K", image: "K.jpg", yaw: -90 },
+            L: { name: "L", image: "L.jpg", yaw: 0 },
+            M: { name: "M", image: "M.jpg", yaw: 0 },
+            N: { name: "N", image: "N.jpg", yaw: -90 },
+            O: { name: "O", image: "O.jpg", yaw: -90 },
+            P: { name: "P", image: "P.jpg", yaw: -90 }
+        };
+
+        const shelves = {
+            1: { name: "本棚1", high: "1 high.jpg", low: "1 low.jpg" },
+            2: { name: "本棚2", high: "2 high.jpg", low: "2 low.jpg" },
+            3: { name: "本棚3", high: "3 high.jpg", low: "3 low.jpg" },
+            4: { name: "本棚4", image: "4.jpg" },
+            5: { name: "本棚5", image: "5.jpg" },
+            6: { name: "本棚6", image: "6.jpg" },
+            7: { name: "本棚7", image: "7.jpg" },
+            8: { name: "本棚8", image: "8.jpg" },
+            9: { name: "本棚9", image: "9.jpg" },
+            10: { name: "本棚10", image: "10.jpg" },
+            40: { name: "本棚40", high: "40 high.jpg", low: "40 low.jpg" },
+            41: { name: "本棚41", high: "41 high.jpg", low: "41 low.jpg" },
+            42: { name: "本棚42", high: "42 high.jpg", low: "42 low.jpg" },
+            43: { name: "本棚43", high: "43 high.jpg", low: "43 low.jpg" },
+            44: { name: "本棚44", high: "44 high.jpg", low: "44 low.jpg" },
+            45: { name: "本棚45", image: "45.jpg" }
+        };
+        for(let i=11; i<=39; i++) {
+            if(!shelves[i]) shelves[i] = { name: "本棚" + i, image: i + ".jpg" };
+        }
+
+        const corridorShelves = {
+            A: [], B: [], C: ["1","2","3"], D: ["4","5"], E: ["6","7"],
+            F: ["8","9","10"], G: ["11","12","13"], H: [], I: ["14","15","16"],
+            J: ["17","18","19","20"], K: ["21","22","23","45"], L: ["24","25","26"],
+            M: ["27","28"], N: ["29","30"], O: ["31","32","33","36","37","38","39"],
+            P: ["34","35","40","41","42","43","44"]
+        };
+
+        const mapPositions = {
+            A: { x: 86.5, y: 93 }, B: { x: 86.5, y: 93 }, C: { x: 86.5, y: 72 }, D: { x: 86.5, y: 31 },
+            E: { x: 86.5, y: 19 }, F: { x: 73, y: 19 }, G: { x: 58, y: 19 }, H: { x: 27, y: 19 },
+            I: { x: 16.5, y: 18 }, J: { x: 15, y: 81.5 }, K: { x: 26.5, y: 81.5 }, L: { x: 26.5, y: 35 },
+            M: { x: 42, y: 35 }, N: { x: 43.5, y: 81.5 }, O: { x: 58, y: 81.5 }, P: { x: 70, y: 81.5 },
+            shelf1: { x: 82.5, y: 60 }, shelf2: { x: 82.5, y: 48 }, shelf3: { x: 82.5, y: 36 },
+            shelf4: { x: 83, y: 13 }, shelf5: { x: 77, y: 13 }, shelf6: { x: 71, y: 13 },
+            shelf7: { x: 65, y: 13 }, shelf8: { x: 59, y: 13 }, shelf9: { x: 53, y: 13 },
+            shelf10: { x: 54, y: 24 }, shelf11: { x: 40, y: 24 }, shelf12: { x: 35.5, y: 24 },
+            shelf13: { x: 31.5, y: 24 }, shelf14: { x: 16, y: 31 }, shelf15: { x: 16, y: 43.5 },
+            shelf16: { x: 16, y: 55 }, shelf17: { x: 16, y: 66 }, shelf18: { x: 19, y: 70 },
+            shelf19: { x: 25, y: 68 }, shelf20: { x: 26, y: 63 }, shelf21: { x: 25, y: 55 },
+            shelf22: { x: 25, y: 43.5 }, shelf23: { x: 25, y: 31 }, shelf24: { x: 31.5, y: 31 },
+            shelf25: { x: 35.5, y: 31 }, shelf26: { x: 40, y: 31 }, shelf27: { x: 46.5, y: 43 },
+            shelf28: { x: 46.5, y: 57 }, shelf29: { x: 51, y: 85 }, shelf30: { x: 56, y: 85 },
+            shelf31: { x: 61, y: 85 }, shelf32: { x: 65, y: 85 }, shelf33: { x: 69, y: 85 },
+            shelf34: { x: 74, y: 85 }, shelf35: { x: 79, y: 85 }, shelf36: { x: 55, y: 57 },
+            shelf37: { x: 55, y: 43 }, shelf38: { x: 61, y: 57 }, shelf39: { x: 61, y: 43 },
+            shelf40: { x: 70, y: 57 }, shelf41: { x: 70, y: 43 }, shelf42: { x: 75, y: 36 },
+            shelf43: { x: 75, y: 48 }, shelf44: { x: 75, y: 60 }, shelf45: { x: 30, y: 60 }
+        };
+
+        /* ==================================================
+           状態管理
+           ================================================== */
+        let currentType = "corridor";
+        let currentLocation = "A";
+        let previousCorridor = "A";
+        let viewer = null;
+        let isMapMinimized = false;
+
+        const preloadedImages = new Set();
+        function preloadImage(url) {
+            if (!url || preloadedImages.has(url)) return;
+            const img = new Image();
+            img.src = url;
+            preloadedImages.add(url);
+        }
+
+        /* ==================================================
+           借りたい本メモ機能
+           ================================================== */
+        let bookMemoList = [];
+        try {
+            const saved = localStorage.getItem("vrLibraryBookMemo");
+            if (saved) bookMemoList = JSON.parse(saved);
+        } catch (e) {
+            console.error("メモの読み込みエラー:", e);
+        }
+
+        function updateMemoCount() {
+            document.getElementById("memo-count").textContent = bookMemoList.length;
+        }
+
+        function saveMemoList() {
+            try {
+                localStorage.setItem("vrLibraryBookMemo", JSON.stringify(bookMemoList));
+            } catch (e) {
+                console.error("メモの保存エラー:", e);
+            }
+            updateMemoCount();
+        }
+
+        function openMemoModal() {
+            const rawLoc = document.getElementById("location-name").textContent;
+            const cleanLoc = rawLoc.replace("現在地：", "");
+            document.getElementById("memo-location-input").value = cleanLoc;
+            document.getElementById("memo-book-input").value = "";
+            
+            renderMemoList();
+            document.getElementById("memo-modal-overlay").style.display = "flex";
+            document.getElementById("memo-book-input").focus();
+        }
+
+        function closeMemoModal() {
+            document.getElementById("memo-modal-overlay").style.display = "none";
+        }
+
+        function addMemoItem() {
+            const locInput = document.getElementById("memo-location-input");
+            const bookInput = document.getElementById("memo-book-input");
+            
+            const locationText = locInput.value.trim() || "場所未指定";
+            const bookText = bookInput.value.trim();
+
+            if (!bookText) {
+                alert("借りたい本の名前や特徴を入力してください。");
+                bookInput.focus();
+                return;
+            }
+
+            bookMemoList.push({
+                id: Date.now(),
+                location: locationText,
+                book: bookText
+            });
+
+            saveMemoList();
+            bookInput.value = "";
+            renderMemoList();
+        }
+
+        function deleteMemoItem(id) {
+            bookMemoList = bookMemoList.filter(item => item.id !== id);
+            saveMemoList();
+            renderMemoList();
+        }
+
+        function clearMemoList() {
+            if (bookMemoList.length === 0) return;
+            if (confirm("メモした本をすべて消しますか？")) {
+                bookMemoList = [];
+                saveMemoList();
+                renderMemoList();
+            }
+        }
+
+        function renderMemoList() {
+            const container = document.getElementById("memo-list-container");
+            container.innerHTML = "";
+
+            if (bookMemoList.length === 0) {
+                container.innerHTML = '<div class="memo-empty">まだメモがありません。<br>借りたい本を見つけたら上の欄から追加してね！</div>';
+                return;
+            }
+
+            bookMemoList.forEach(item => {
+                const div = document.createElement("div");
+                div.className = "memo-item";
+
+                const infoDiv = document.createElement("div");
+                infoDiv.className = "memo-item-info";
+
+                const locSpan = document.createElement("span");
+                locSpan.className = "memo-item-loc";
+                locSpan.textContent = item.location;
+
+                const titleSpan = document.createElement("span");
+                titleSpan.className = "memo-item-title";
+                titleSpan.textContent = item.book;
+
+                infoDiv.appendChild(locSpan);
+                infoDiv.appendChild(titleSpan);
+
+                const delBtn = document.createElement("button");
+                delBtn.className = "memo-delete-btn";
+                delBtn.textContent = "消す";
+                delBtn.onclick = () => deleteMemoItem(item.id);
+
+                div.appendChild(infoDiv);
+                div.appendChild(delBtn);
+                container.appendChild(div);
+            });
+        }
+
+        function copyMemoList() {
+            if (bookMemoList.length === 0) {
+                alert("コピーするメモがありません。");
+                return;
+            }
+            const lines = ["【借りたい本リスト】"];
+            bookMemoList.forEach((item, index) => {
+                lines.push((index + 1) + ". [" + item.location + "] " + item.book);
+            });
+            const text = lines.join("\n");
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    const btn = document.getElementById("memo-copy-btn");
+                    const orig = btn.textContent;
+                    btn.textContent = "✔ コピーしました！";
+                    setTimeout(() => { btn.textContent = orig; }, 2000);
+                }).catch(() => {
+                    prompt("下の文字をコピーして先生に送ってね：", text);
+                });
+            } else {
+                prompt("下の文字をコピーして先生に送ってね：", text);
+            }
+        }
+
+        updateMemoCount();
+
+        /* ==================================================
+           初期化・地図のセットアップ
+           ================================================== */
+        function initMapPins() {
+            const wrapper = document.getElementById("map-wrapper");
+            Object.keys(corridors).forEach(key => {
+                const pos = mapPositions[key];
+                if(pos) {
+                    const pin = document.createElement("div");
+                    pin.className = "clickable-pin";
+                    pin.style.left = pos.x + "%";
+                    pin.style.top = pos.y + "%";
+                    pin.title = "通路 " + key;
+                    pin.onclick = () => moveToCorridor(key);
+                    wrapper.appendChild(pin);
+                }
+            });
+            Object.keys(shelves).forEach(key => {
+                const pos = mapPositions["shelf" + key];
+                if(pos) {
+                    const pin = document.createElement("div");
+                    pin.className = "clickable-pin";
+                    pin.style.left = pos.x + "%";
+                    pin.style.top = pos.y + "%";
+                    pin.title = shelves[key].name;
+                    pin.onclick = () => moveToShelf(key);
+                    wrapper.appendChild(pin);
+                }
+            });
+        }
+
+        function toggleMap() {
+            const mapContainer = document.getElementById("map-container");
+            const btn = document.getElementById("toggle-map-btn");
+            isMapMinimized = !isMapMinimized;
+            if (isMapMinimized) {
+                mapContainer.classList.add("minimized");
+                btn.textContent = "ひろげる";
+            } else {
+                mapContainer.classList.remove("minimized");
+                btn.textContent = "とじる";
+            }
+        }
+
+        function updateMapMarker(locationKey) {
+            const marker = document.getElementById("map-marker");
+            const pos = mapPositions[locationKey];
+            if (pos) {
+                marker.style.left = pos.x + "%";
+                marker.style.top = pos.y + "%";
+            }
+        }
+
+        /* ==================================================
+           ビューアー制御
+           ================================================== */
+        function changePhoto(image, initialYaw = 0, initialPitch = 0, hfov = 100) {
+            document.getElementById("loading").style.display = "block";
+            
+            if (viewer) {
+                viewer.destroy();
+            }
+            viewer = pannellum.viewer("panorama", {
+                type: "equirectangular",
+                panorama: image,
+                autoLoad: true,
+                showControls: true,
+                compass: false,
+                yaw: initialYaw,
+                pitch: initialPitch,
+                hfov: hfov,
+                minHfov: 30
+            });
+            
+            viewer.on('load', function() {
+                document.getElementById("loading").style.display = "none";
+            });
+            
+            viewer.on('error', function() {
+                document.getElementById("loading").style.display = "none";
+            });
+        }
+
+        /* ==================================================
+           移動ロジック
+           ================================================== */
+        function moveToCorridor(location) {
+            currentType = "corridor";
+            currentLocation = location;
+            
+            const data = corridors[location];
+            changePhoto(data.image, data.yaw);
+            document.getElementById("location-name").textContent = "現在地：通路 " + data.name;
+
+            if (location !== "A") {
+                document.getElementById("visitor-number").style.display = "none";
+            } else {
+                document.getElementById("visitor-number").style.display = "block";
+            }
+
+            createButtons();
+            updateMapMarker(location);
+            preloadNextData(location);
+        }
+
+        function moveToShelf(number, mode="high") {
+            let keepYaw = 0;
+            let keepPitch = 0;
+            let keepHfov = 100;
+            
+            if (currentType === "shelf" && String(currentLocation) === String(number) && viewer) {
+                keepYaw = viewer.getYaw();
+                keepPitch = viewer.getPitch();
+                keepHfov = viewer.getHfov();
+            }
+            
+            currentType = "shelf";
+            currentLocation = number;
+            
+            previousCorridor = getCorridorFromShelf(number) || "A";
+            
+            const data = shelves[number];
+            let targetImage = data.image;
+            let displayName = data.name;
+            
+            if (data.high && data.low) {
+                targetImage = (mode === "low") ? data.low : data.high;
+                displayName += (mode === "low") ? "（下）" : "（上）";
+            }
+
+            changePhoto(targetImage, keepYaw, keepPitch, keepHfov);
+            document.getElementById("location-name").textContent = displayName;
+            
+            createButtons();
+            updateMapMarker("shelf" + number);
+        }
+
+        function backToCorridor() {
+            moveToCorridor(previousCorridor);
+        }
+
+        function getCorridorFromShelf(number) {
+            for (const corridor in corridorShelves) {
+                if (corridorShelves[corridor].includes(String(number))) {
+                    return corridor;
+                }
+            }
+            return "A";
+        }
+        
+        function preloadNextData(currentLoc) {
+            const currentCode = currentLoc.charCodeAt(0);
+            if (currentCode < "P".charCodeAt(0)) {
+                preloadImage(corridors[String.fromCharCode(currentCode + 1)].image);
+            }
+            const shelfList = corridorShelves[currentLoc];
+            if(shelfList) {
+                shelfList.forEach(num => {
+                    const s = shelves[num];
+                    if (s.image) preloadImage(s.image);
+                    if (s.high) preloadImage(s.high);
+                });
+            }
+        }
+
+        /* ==================================================
+           UIボタン生成
+           ================================================== */
+        function createButtons() {
+            const buttons = document.getElementById("buttons");
+            buttons.innerHTML = "";
+
+            if (currentType === "corridor") {
+                const currentCode = currentLocation.charCodeAt(0);
+                
+                if (currentCode > "A".charCodeAt(0)) {
+                    const prevLoc = String.fromCharCode(currentCode - 1);
+                    const btn = document.createElement("button");
+                    btn.className = "move-button";
+                    btn.textContent = "◀ もどる";
+                    btn.onclick = () => moveToCorridor(prevLoc);
+                    buttons.appendChild(btn);
+                }
+
+                const shelfList = corridorShelves[currentLocation];
+                if(shelfList) {
+                    shelfList.forEach(number => {
+                        const btn = document.createElement("button");
+                        btn.className = "move-button";
+                        btn.textContent = "📖 本棚" + number;
+                        btn.onclick = () => moveToShelf(number);
+                        buttons.appendChild(btn);
+                    });
+                }
+
+                if (currentCode < "P".charCodeAt(0)) {
+                    const nextLoc = String.fromCharCode(currentCode + 1);
+                    const btn = document.createElement("button");
+                    btn.className = "move-button";
+                    btn.textContent = "すすむ ▶";
+                    btn.onclick = () => moveToCorridor(nextLoc);
+                    buttons.appendChild(btn);
+                }
+                if (currentLocation === "P") {
+                    const btn = document.createElement("button");
+                    btn.className = "move-button";
+                    btn.textContent = "すすむ ▶ (Cへ)";
+                    btn.onclick = () => moveToCorridor("C");
+                    buttons.appendChild(btn);
+                }
+            }
+
+            if (currentType === "shelf") {
+                const data = shelves[currentLocation];
+
+                if (data.high && data.low) {
+                    const locText = document.getElementById("location-name").textContent;
+                    
+                    if (locText.includes("（上）")) {
+                        const btn = document.createElement("button");
+                        btn.className = "move-button action-btn";
+                        btn.textContent = "👇 したの棚をみる";
+                        btn.onclick = () => moveToShelf(currentLocation, "low");
+                        buttons.appendChild(btn);
+                    } else if (locText.includes("（下）")) {
+                        const btn = document.createElement("button");
+                        btn.className = "move-button action-btn";
+                        btn.textContent = "👆 うえの棚をみる";
+                        btn.onclick = () => moveToShelf(currentLocation, "high");
+                        buttons.appendChild(btn);
+                    }
+                }
+
+                const currentShelfNum = parseInt(currentLocation, 10);
+                
+                if (shelves[currentShelfNum - 1]) {
+                    const prevShelfBtn = document.createElement("button");
+                    prevShelfBtn.className = "move-button";
+                    prevShelfBtn.textContent = "◀ 前の棚";
+                    prevShelfBtn.onclick = () => moveToShelf((currentShelfNum - 1).toString());
+                    buttons.appendChild(prevShelfBtn);
+                }
+                
+                const backBtn = document.createElement("button");
+                backBtn.className = "move-button action-btn";
+                backBtn.textContent = "🚶‍♂️ 通路にもどる";
+                backBtn.onclick = backToCorridor;
+                buttons.appendChild(backBtn);
+
+                if (shelves[currentShelfNum + 1]) {
+                    const nextShelfBtn = document.createElement("button");
+                    nextShelfBtn.className = "move-button";
+                    nextShelfBtn.textContent = "次の棚 ▶";
+                    nextShelfBtn.onclick = () => moveToShelf((currentShelfNum + 1).toString());
+                    buttons.appendChild(nextShelfBtn);
+                }
+            }
+        }
+
+        /* ==================================================
+           スタート処理
+           ================================================== */
+        function startLibrary() {
+            document.getElementById("start-screen").style.display = "none";
+            initMapPins();
+            moveToCorridor("A");
+        }
+
+        /* ==================================================
+           来館者数取得
+           ================================================== */
+        const visitorEl = document.getElementById("visitor-number");
+        
+        if (!sessionStorage.getItem("visited")) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+            fetch("https://script.google.com/macros/s/AKfycbwznzWMFtYivUz9nIUvq0xN-FGFH2A3NxHIPMcbD_rzMs3bJnjdmASKvnHRdDDkkeDe/exec", {
+                signal: controller.signal
+            })
+            .then(r => {
+                clearTimeout(timeoutId);
+                if (!r.ok) throw new Error("ネットワークエラー");
+                return r.text();
+            })
+            .then(count => {
+                if (count && !isNaN(Number(count))) {
+                    visitorEl.textContent = "あなたは " + count + " 番目の来館者です";
+                    sessionStorage.setItem("visited", "true");
+                    sessionStorage.setItem("visitCount", count);
+                } else {
+                    visitorEl.textContent = "来館者数：現在取得できません";
+                }
+            })
+            .catch(e => {
+                clearTimeout(timeoutId);
+                visitorEl.textContent = "来館者数：現在取得できません";
+                console.error("来館者取得エラー:", e);
+            });
+        } else {
+            const savedCount = sessionStorage.getItem("visitCount");
+            if(savedCount) {
+                visitorEl.textContent = "あなたは " + savedCount + " 番目の来館者です";
+            } else {
+                visitorEl.style.display = "none";
+            }
+        }
+    </script>
+</body>
+</html>
